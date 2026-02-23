@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaflet Map with Custom Compass</title>
+    <style>
+        .compass {
+            position: absolute;
+            top: 10px;
+            left: 8px;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background-color: rgb(39, 37, 37);
+            border: 2.5px solid rgb(255, 254, 254);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .compass-arrow {
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-bottom: 15px solid red;
+            transform-origin: 50% 50%;
+            transition: transform 0.5s;
+        }
+
+        .compass-scale {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none;
+        }
+
+        .compass-scale span {
+            position: absolute;
+            color: white;
+            font-size: 15px;
+            font-weight: bold;
+            text-align: center;
+            transform-origin: 50% 50%;
+        }
+
+        .degree-n { transform: translateY(-32px); color: red; }
+        .degree-e { transform: translateX(32px) rotate(90deg); }
+        .degree-s { transform: translateY(32px) rotate(180deg); }
+        .degree-w { transform: translateX(-32px) rotate(270deg); }
+
+        /* Additional minor tick marks for design */
+        .tick {
+            position: absolute;
+            width: 2px;
+            height: 7.5px;
+            background-color: white;
+            transform-origin: 50% 50%;
+        }
+
+        .tick-0 { transform: rotate(0deg) translateY(-43px); }
+        .tick-30 { transform: rotate(30deg) translateY(-43px); }
+        .tick-60 { transform: rotate(60deg) translateY(-43px); }
+        .tick-90 { transform: rotate(90deg) translateY(-43px); }
+        .tick-120 { transform: rotate(120deg) translateY(-43px); }
+        .tick-150 { transform: rotate(150deg) translateY(-43px); }
+        .tick-180 { transform: rotate(180deg) translateY(-43px); }
+        .tick-210 { transform: rotate(210deg) translateY(-43px); }
+        .tick-240 { transform: rotate(240deg) translateY(-43px); }
+        .tick-270 { transform: rotate(270deg) translateY(-43px); }
+        .tick-300 { transform: rotate(300deg) translateY(-43px); }
+        .tick-330 { transform: rotate(330deg) translateY(-43px); }
+    </style>
+</head>
+<body>
+
+<div id="map"></div>
+<div class="compass">
+    <div class="compass-scale">
+        <span class="degree-n">N</span>
+        <span class="degree-e">E</span>
+        <span class="degree-s">S</span>
+        <span class="degree-w">W</span>
+        <!-- Adding tick marks -->
+        <div class="tick tick-0"></div>
+        <div class="tick tick-30"></div>
+        <div class="tick tick-60"></div>
+        <div class="tick tick-90"></div>
+        <div class="tick tick-120"></div>
+        <div class="tick tick-150"></div>
+        <div class="tick tick-180"></div>
+        <div class="tick tick-210"></div>
+        <div class="tick tick-240"></div>
+        <div class="tick tick-270"></div>
+        <div class="tick tick-300"></div>
+        <div class="tick tick-330"></div>
+    </div>
+    <div class="compass-arrow" id="compass-arrow"></div>
+</div>
+
+<script>
+
+    // Function to rotate the compass arrow
+    function setCompassDirection(angle) {
+        var arrow = document.getElementById('compass-arrow');
+        arrow.style.transform = 'rotate(' + angle + 'deg)';
+    }
+
+    let currentAngle = 0
+
+</script>
+
+</body>
+</html>

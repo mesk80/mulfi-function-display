@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>MFD</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://unpkg.com/leaflet-rotate@latest/dist/leaflet-rotate.min.js"></script>
+    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/mwasil/Leaflet.Rainviewer/leaflet.rainviewer.css"/>
+    <script src="https://cdn.jsdelivr.net/gh/mwasil/Leaflet.Rainviewer/leaflet.rainviewer.js"></script>
+    <style>
+        body {
+            user-select: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: hsl(0, 8%, 95%);
+        }
+        #input-container {
+            position: absolute;
+            left: 50px;
+            width: 150px;
+            height: 20px;
+            background-color: #222;
+            border: 5px solid #444;
+        }
+        #container {
+            position: relative;
+            width: 800px;
+            height: 500px;
+            background-color: #222;
+            border: 110px solid #292828;
+            border-radius: 50px;
+        }
+        #inform_container {
+            left: 1px; 
+            width: 115px;  
+            height: 100%;
+            position: relative;
+            color: #ffffff;
+            background-color: #222;
+            border: 0.1px solid #ffffff;
+        }
+        #map {
+            left: 15%;
+            top: -502.5px;
+            width: 85%;
+            height: 100%;
+            border-color: #ffffff;
+            color: rgb(60, 6, 77)
+        }
+        @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+        }
+        .custom-popup {
+            position: absolute;
+            bottom: 20px;  
+            right: 10px;   
+            background-color: white;
+            padding: 25px;
+            border: 2px solid #1b1a1a;
+            border-radius: 20px;
+            z-index: 1000; /* appears above other map elements */
+            display: none; /* Initially hide the popup */
+            animation: fadeIn 1s ease-in-out;
+        }
+        .warning {
+            color: red;
+            font-weight: bold;
+        }
+        .button {
+            position: absolute;
+            padding: 7.5px;
+            background-color: #353434;
+            color: rgb(255, 255, 255);
+            border: 2.5px;
+            border-style: solid;
+            border-radius: 5px;
+            border-color: rgb(17, 16, 16);
+            width: 75px;
+            max-height: 30px;
+            cursor: marker;
+            font-size: 10px;
+            font-style: bold;
+            z-index: 1000;
+        }
+        .button:hover {
+            background-color: #777;
+        }
+        #button-top-left {
+            top: 10px;
+            left: -89.5px;
+        }
+        #button-top-right {
+            
+            top: 10px;
+            right: -89.5px;
+        }
+        #button-bottom-left {
+            
+            bottom: 10px;
+            left: -89.5px;
+        }
+        #button-bottom-right {
+            bottom: 10px;
+            right: -89.5px;
+        }
+        #button-center-left {
+            top: 35%;
+            left: -89.5px;
+            transform: translateY(-50%);
+            font-size: 12px;
+        }
+        #button-center-right {
+            top: 50%;
+            right: -89.5px;
+            transform: translateY(-50%);
+        }
+        #text{
+            position: relative;
+            top: -730px;
+            left: -75px;
+            transform: translateY(-50%); 
+            font-size: 12px;
+            color: #ffffff;
+        }
+        #range-text{
+            position: relative;
+            top: -870px;
+            left: -66px;
+            transform: translateY(-50%); 
+            font-size: 12px;
+            color: #ffffff;
+        }
+        #button-vor{
+            top: 60%;
+            left: -102px;
+            width: 47.5px;
+            transform: translateY(-50%); 
+            font-size: 9px;
+        }
+        #button-vortac{
+            top: 60%;
+            left: -52px;
+            width: 47.5px;
+            transform: translateY(-50%); 
+            font-size: 9px;
+            
+        }
+        #button-tacan{
+            top: 67.5%;
+            left: -102px;
+            width: 47.5px;
+            transform: translateY(-50%); 
+            font-size: 9px;
+        }
+        #button-ndb{
+            top:67.5%;
+            left: -52px;
+            width: 47.5px;
+            transform: translateY(-50%); 
+            font-size: 11px;
+            
+        }
+        #button-decrease-duration{
+            top: 125%;
+            left: 52%;
+            width: 25px;
+            height: 30px;
+            transform: translateY(-50%); 
+            font-size: 11px;   
+        }
+        #button-increase-duration{
+            top: 125%;
+            left: 48.5%;
+            width: 25px;
+            height: 30px;
+            transform: translateY(-50%); 
+            font-size: 11px;   
+        }
+        #animation-speed {
+            position: absolute;
+            top: 123%;
+            left: 56%;
+            font-size: 24px;
+            color: rgb(0, 0, 0); /* For visibility */
+        }
+        #weathrBtn{
+            position: absolute;
+            top: -10%;
+            left: 50%;
+            z-index: 1000;
+        }
+        #timestamp{
+            position: absolute;
+            top: 1%;
+            left: 50%;
+            z-index: 1000;
+        }
+        #logo {
+            position: relative;
+            top: -480px;
+            left: 100px;
+            color: rgb(252, 252, 252);
+            font-size: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="inform_container"></div>
+        <div id="map"></div>
+        <div id="compass-container"></div>
+        <div id="custom-popup" class="custom-popup"></div>
+        <button id="button-top-left" class="button">Follow</button>
+        <button id="button-top-right" class="button">Label</button>
+        <button id="button-bottom-left" class="button">Traffic</button>
+        <button id="button-bottom-right" class="button">TAWS</button>
+        <button id="button-center-left" class="button">runway</button>
+        <button id="button-center-right" class="button">Route</button>
+        <button id="button-vor" class="button">VORDME</button>
+        <button id="button-vortac" class="button">VORTAC</button>
+        <button id="button-tacan" class="button">TACAN</button>
+        <button id="button-ndb" class="button">NDB</button>
+        <button id="button-decrease-duration" class="button">></button>
+        <button id="button-increase-duration" class="button"><</button>
+        <button id="weathrBtn" class="button">Weather</button>
+        <div id="text">NAVaids</div>
+        <div id="range-text">Range</div>
+        <div id="animation-speed">---</div>
+        <div id="timestamp" >Time: --</div>
+        <div id="logo">Avionics</div>
+    </div>
+    <!--
+    <div id="input-container">
+        <label for="startLat">Start Latitude:</label>
+        <input type="text" id="startLat" placeholder="Start Latitude">
+        <label for="startLng">Start Longitude:</label>
+        <input type="text" id="startLng" placeholder="Start Longitude">
+        <label for="endLat">End Latitude:</label>
+        <input type="text" id="endLat" placeholder="End Latitude">
+        <label for="endLng">End Longitude:</label>
+        <input type="text" id="endLng" placeholder="End Longitude">
+        <button id="setMarkersButton">Set Markers</button>
+    </div>-->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-rotatedmarker/leaflet.rotatedMarker.js"></script>
+    <script type="module" src="./js/app.js"></script>
+</body>
+</html>

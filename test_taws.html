@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple RainViewer API Example</title>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    
+    <link href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" rel="stylesheet"/>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+
+    <style>
+        body, html { height: 100%; margin: 0; padding: 0; }
+        #map{
+            left: 15%;
+            top: -502.5px;
+            width: 85%;
+            height: 100%;
+            border-color: #ffffff;
+            color: rgb(60, 6, 77)
+        }
+    </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<script>
+    // Function to calculate a new point offset from the original by a certain distance
+    function offsetLatLng(lat, lng, distance, angleDeg) {
+        const earthRadius = 6378137; // Earth's radius in meters
+        const deltaLat = distance * Math.cos(angleDeg * Math.PI / 180) / earthRadius;
+        const deltaLng = distance * Math.sin(angleDeg * Math.PI / 180) / (earthRadius * Math.cos(lat * Math.PI / 180));
+        return [lat + deltaLat * (180 / Math.PI), lng + deltaLng * (180 / Math.PI)];
+    }
+
+    // Function to get bearing between two points
+    function getBearing(lat1, lng1, lat2, lng2) {
+        const dLng = (lng2 - lng1) * Math.PI / 180;
+        const y = Math.sin(dLng) * Math.cos(lat2 * Math.PI / 180);
+        const x = Math.cos(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180) -
+                Math.sin(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.cos(dLng);
+        const bearing = Math.atan2(y, x) * 180 / Math.PI;
+        return (bearing + 360) % 360; // normalize to 0-360 degrees
+    }
+
+    // Create the parallel path
+    function createParallelPath(points, offsetDistance) {
+        let parallelPath = [];
+        for (let i = 0; i < points.length - 1; i++) {
+            const [lat1, lng1] = points[i];
+            const [lat2, lng2] = points[i + 1];
+            
+            // Get the bearing and calculate a 90-degree offset (perpendicular)
+            const bearing = getBearing(lat1, lng1, lat2, lng2);
+            const perpendicularBearing = (bearing + 90) % 360; // for the right parallel
+            
+            // Offset both points by the perpendicular distance
+            const newPoint1 = offsetLatLng(lat1, lng1, offsetDistance, perpendicularBearing);
+            const newPoint2 = offsetLatLng(lat2, lng2, offsetDistance, perpendicularBearing);
+            
+            parallelPath.push(newPoint1);
+            parallelPath.push(newPoint2);
+        }
+        return parallelPath;
+    }
+
+    // Example usage:
+    const path = [
+        [37.7749, -122.4194],
+        [37.7750, -122.4184],
+        [37.7751, -122.4174]
+    ];
+
+    const offsetDistance = 1000; // meters
+    const parallelPath = createParallelPath(path, offsetDistance);
+
+    // Add the paths to a Leaflet map
+    const map = L.map('map').setView([37.7749, -122.4194], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    const mainPath = L.polyline(path, {color: 'blue'}).addTo(map);
+    const parallelPathLine = L.polyline(parallelPath, {color: 'red'}).addTo(map);
+
+</script>
+
+</body>
+</html>
