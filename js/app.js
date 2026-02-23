@@ -281,114 +281,130 @@ var live_altitude;
 
 //  ******   Function to move markers   ******
 function moveMarker(index, marker, path) {
-    if (index >= path.length - 1 && marker != mymarker) map.removeLayer(marker); // removing marker after landing
+    if (index >= path.length - 1 && marker != mymarker) map.removeLayer(marker);
     if (index >= path.length - 1) return;
 
     var start = path[index];
     var end = path[index + 1];
 
     var distance = calculateDistance(start.lat, start.long, end.lat, end.long);
-    var avg_speed = (start.speed + end.speed) / 2 * 0.51444444; // average Flight speed in meters/second
-    var duration = (distance / avg_speed) * 1000 ; // Duration of animation between 2 pints in ms
+    var avg_speed = (start.speed + end.speed) / 2 * 0.51444444;
+    var duration = avg_speed === 0
+        ? 8000 / duration_factor
+        : (distance / avg_speed) * 1000;
+
     document.getElementById("animation-speed").innerText = `${duration_factor}x`;
-    if (avg_speed == 0) duration = 8000 / duration_factor; // for infinity case
+
+    // *** پیش‌محاسبه خارج از حلقه انیمیشن ***
+    var isMyPath = (path === my_path);
+    var precomputed = {};
+    if (isMyPath) {
+        var coordinates = path.slice(1).map(p => [p.lat, p.long]);
+        var total_dist = path_length(coordinates, path.length - 1) * 0.54;
+        var mileage = index > 2 ? path_length(coordinates, index) * 0.54 : 0;
+        precomputed = { total_dist, mileage };
+    }
+
+    // *** اضافه کردن marker یک‌بار قبل از حلقه ***
+    marker.addTo(map);
 
     var startTime = performance.now();
+    var compassUpdated = false; // جلوگیری از setTimeout تکراری
+
     function animate(time) {
-
-        marker.addTo(map);
-
         var elapsed = time - startTime;
-        var factor = elapsed / duration * duration_factor;
-        var angle_factor = elapsed / 2000;
-        if(path === my_path){
-            console.log(time, startTime, factor);
-        };
-
-        
-        //if (Math.abs(end.track - start.track) > 30) angle_factor *= 2;
-        if (angle_factor > 1) angle_factor = 1;
-
-        if (duration == 0) factor = 1;
-        if (factor > 1) factor = 1; //to end the animation
+        var factor = duration === 0 ? 1 : Math.min(elapsed / duration * duration_factor, 1);
+        var angle_factor = Math.min(elapsed / 2000, 1);
 
         var lat = interpolate(start.lat, end.lat, factor);
-        var long = interpolate(start.long, end.long, factor);
+        var lng = interpolate(start.long, end.long, factor);
         var angle = interpolate_angle(start.track, end.track, angle_factor);
 
-        marker.setLatLng([lat, long]);
+        marker.setLatLng([lat, lng]);
         marker.setRotationAngle(angle + 60);
 
-        if (factor < 1) {
-            requestAnimationFrame(animate); // Continue animation
-        } else {
-            setTimeout(() => moveMarker(index + 1, marker, path), 0); // Move to next point
-        }
-        // to follow airplane movement
+        // *** follow map ***
         if (follow === 1 && marker === mymarker) {
-            map.setView([lat, long], map.getZoom(), { animate: true });
+            map.setView([lat, lng], map.getZoom(), { animate: false }); // animate:false سبک‌تر
         }
-        var range = scales[map.getZoom()] * 10.3 * 0.539957; // horizontal range of map in nm
 
-        // ********* setting for my flight *********
-        if (path === my_path) {
-            
-            //console.log(time, startTime, factor);
-            // ** update compass **
-            setTimeout(() => { setCompassDirection(start.track); }, 1000);
-            // display remaining distance and Distance traveled
-            var coordinates = path.slice(1).map(function (point) {
-                return [point.lat, point.long];
-            });
-            var total_dist = path_length(coordinates, path.length - 1) * 0.54; // in nm
-            if (index > 2) var Mileage = path_length(coordinates, index) * 0.54; // in nm
-            else Mileage = 0;
-            var toDest = total_dist - Mileage;
+        // *** بروزرسانی اطلاعات my_path فقط هر 200ms ***
+        if (isMyPath) {
+            if (!compassUpdated) {
+                setCompassDirection(start.track);
+                compassUpdated = true;
+            }
 
-            // flight information
-            inform_container.innerHTML = `<br><br><br><br><br><br><br> -track: ${angle.toFixed(0)}° <br><br> -GS: ${start.speed}
-            kts<br><br> -Alt: ${start.altitude} ft <br><br> -next WP: - - - <br><br> -Mileage: ${Mileage.toFixed(0)} nm <br><br> -ToDest: ${toDest.toFixed(0)} nm 
-            <br><br>`;
+            var toDest = precomputed.total_dist - precomputed.mileage;
+            // فقط هر 10 فریم یه‌بار DOM رو آپدیت کن
+            if (!animate._frameCount) animate._frameCount = 0;
+            animate._frameCount++;
+            if (animate._frameCount % 10 === 0) {
+                inform_container.innerHTML = `<br><br><br><br><br><br><br>
+                    -track: ${angle.toFixed(0)}° <br><br>
+                    -GS: ${start.speed} kts<br><br>
+                    -Alt: ${start.altitude} ft <br><br>
+                    -next WP: - - - <br><br>
+                    -Mileage: ${precomputed.mileage.toFixed(0)} nm <br><br>
+                    -ToDest: ${toDest.toFixed(0)} nm <br><br>`;
+            }
 
             live_lat = start.lat;
             live_long = start.long;
-            live_altitude = start.altitude; // in feet for taws
+            live_altitude = start.altitude;
             live_index = index;
         }
-        if (other_aircraft == 0 && marker != mymarker) map.removeLayer(marker); // remove other markers from map if enabled
+
+        // *** حذف marker دیگران اگر غیرفعال ***
+        if (other_aircraft === 0 && marker != mymarker) {
+            map.removeLayer(marker);
+            return;
+        }
+
+        if (factor < 1) {
+            requestAnimationFrame(animate);
+        } else {
+            moveMarker(index + 1, marker, path);
+        }
     }
+
     requestAnimationFrame(animate);
 
-    // **  to show all flight path & information **
-    marker.on('click', function (e) {
+    // *** حذف event listener قبلی قبل از اضافه کردن جدید ***
+    marker.off('click');
+    marker.on('click', function () {
         map.eachLayer(function (layer) {
             if (layer instanceof L.Polyline && layer != mypolyline) {
                 map.removeLayer(layer);
             }
         });
 
-        let justpath = path.slice(1); //removing first element
-        var polylinePoints = justpath.map(function (point) {
-            return [point.lat, point.long];
-        });
-        var polyline = L.polyline(polylinePoints, { color: `#107791` }).addTo(map);
+        var polylinePoints = path.slice(1).map(p => [p.lat, p.long]);
+        L.polyline(polylinePoints, { color: '#107791' }).addTo(map);
+
         var popup = document.getElementById('custom-popup');
-        popup.style.display = 'block';  // Show the popup
-        popup.innerHTML = `<div>Route: ${path[0].title}<br>${path[0].airport_codes} - type: ${path[0].aircraft_type} <br> track: ${start.track}°
-        - spd: ${start.speed} kts<br> alt: ${start.altitude}ft </div>`;
-        setTimeout(function () { popup.style.display = "none"; }, 8e3); //hide after 10 sec
+        popup.style.display = 'block';
+        popup.innerHTML = `<div>Route: ${path[0].title}<br>
+            ${path[0].airport_codes} - type: ${path[0].aircraft_type}<br>
+            track: ${start.track}° - spd: ${start.speed} kts<br>
+            alt: ${start.altitude}ft</div>`;
+        setTimeout(() => popup.style.display = 'none', 8000);
     });
-    // hiding the popup when clicking on the map
-    map.on('click', function (e) {
-        var popup = document.getElementById('custom-popup');
-        popup.style.display = 'none';  // Hide the popup
-        map.eachLayer(function (layer) {
-            if (layer instanceof L.Polyline && layer != mypolyline) {
-                map.removeLayer(layer);
-            }
-        });
-    });
+
+    // *** map click فقط یه‌بار باید ثبت بشه، نه اینجا ***
 }
+
+// *** این رو فقط یه‌بار خارج از moveMarker تعریف کن ***
+map.off('click');
+map.on('click', function () {
+    document.getElementById('custom-popup').style.display = 'none';
+    map.eachLayer(function (layer) {
+        if (layer instanceof L.Polyline && layer != mypolyline) {
+            map.removeLayer(layer);
+        }
+    });
+});
+
 
 // function to calc of total distance of a path from beginning to given index
 function path_length(path, index) {
